@@ -1,7 +1,19 @@
 
 #include "Adafruit_APDS9960.h"
 #include "Arduino.h"
+#include "Config.h"
+#include <ESP8266HTTPClient.h>
+#include <ESP8266WiFi.h>
+#include <RGBConverter.h>
+
 Adafruit_APDS9960 apds;
+WiFiClient client;
+const char *host = "192.168.178.38";
+const String apiKey = "xZXN4VEGU5qPJMzVGJy0uxPtHbkmPcyxpv5yvtgf";
+// cp config.h.example config.h
+// then edit the constants for config
+const char *wifiSSID = WIFI_SSID;
+const char *wifiPass = WIFI_PASS;
 
 void setLights(uint8_t left, uint8_t right) {
   analogWrite(D5, left);
@@ -23,9 +35,68 @@ void setup() {
   // enable color sensign mode
   apds.enableColor(true);
   apds.enableProximity(true);
+
+  uint8_t tries = 0;
+  WiFi.mode(WIFI_STA);
+  while (WiFi.status() != WL_CONNECTED) {
+    if (tries % 10 == 0) {
+      WiFi.begin(wifiSSID, wifiPass);
+    }
+
+    delay(250);
+    setLights(100, 0);
+    delay(250);
+    setLights(0, 100);
+    tries++;
+  }
+  setLights(0, 0);
 }
 
 uint16_t r, g, b, c;
+RGBConverter conv;
+
+void sendRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t light) {
+  double hsl[3];
+  conv.rgbToHsl((byte)r, (byte)g, (byte)b, hsl);
+  uint16_t hue = (uint16_t)(hsl[0] * 65535) ;
+
+  if (client.connect(host, 80)) {
+
+    String body = "{\"on\": true, \"hue\": " + String(hue) + "}";
+    String path = "PUT /api/" + apiKey + "/lights/" + String(light) + "/state";
+    client.print(path);
+    client.println(" HTTP/1.1");
+    client.println("Cache-Control: no-cache");
+    client.println("Content-Type: application/json");
+    client.print("Content-Length: ");
+    client.println(body.length());
+    client.println();
+    client.print(body);
+
+    unsigned long currentMillis = millis(), previousMillis = millis();
+    long interval = 2000;
+
+    while (!client.available()) {
+
+      if ((currentMillis - previousMillis) > interval) {
+
+        Serial.println("Timeout");
+        client.stop();
+        return;
+      }
+      currentMillis = millis();
+    }
+
+    while (client.connected()) {
+      if (client.available()) {
+        char str = client.read();
+        Serial.print(str);
+      }
+    }
+    delay(100);
+    client.stop();
+  }
+}
 
 void getNormalizedColorData(uint16_t *r, uint16_t *g, uint16_t *b, uint16_t *c,
                             uint8_t lights, uint8_t samples) {
@@ -69,7 +140,7 @@ void loop() {
   getNormalizedColorData(&r, &g, &b, &c, 200, 16);
   delay(5);
   // read dark samples
-  getNormalizedColorData(&r2, &g2, &b2, &c2, 50, 16);
+  getNormalizedColorData(&r2, &g2, &b2, &c2, 10, 16);
 
   float maxval = 0;
 
@@ -81,10 +152,10 @@ void loop() {
     maxval = b;
   if (c > maxval)
     maxval = c;
-  r = (uint16_t)((r / maxval) * 255.0);
-  g = (uint16_t)((g / maxval) * 255.0);
-  b = (uint16_t)((b / maxval) * 255.0);
-  c = (uint16_t)((c / maxval) * 255.0);
+  r = (uint16_t)(((r + r2) / maxval) * 255.0);
+  g = (uint16_t)(((g + g2) / maxval) * 255.0);
+  b = (uint16_t)(((b + b2) / maxval) * 255.0);
+  c = (uint16_t)(((c + c2) / maxval) * 255.0);
 
   r2 = (uint16_t)((r2 / maxval) * 255.0);
   g2 = (uint16_t)((g2 / maxval) * 255.0);
@@ -100,15 +171,15 @@ void loop() {
   Serial.print(" g: ");
   Serial.print(g > 255 ? 255 : g);
 
-  Serial.print(" bb: ");
-  Serial.print(b2 > 255 ? 255 : b2);
+  // Serial.print(" bb: ");
+  // Serial.print(b2 > 255 ? 255 : b2);
 
-  Serial.print(" rr: ");
-  Serial.print(r2 > 255 ? 255 : r2);
+  // Serial.print(" rr: ");
+  // Serial.print(r2 > 255 ? 255 : r2);
 
-  Serial.print(" gg: ");
-  Serial.print(g2 > 255 ? 255 : g2);
-
+  // Serial.print(" gg: ");
+  // Serial.print(g2 > 255 ? 255 : g2);
+  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 7);
   // Serial.print(" p: ");
   // Serial.print(apds.readProximity());
   // Serial.print(" clear: ");
