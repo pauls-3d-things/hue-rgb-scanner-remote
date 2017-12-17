@@ -157,11 +157,6 @@ void loop() {
   b = (uint16_t)(((b + b2) / maxval) * 255.0);
   c = (uint16_t)(((c + c2) / maxval) * 255.0);
 
-  r2 = (uint16_t)((r2 / maxval) * 255.0);
-  g2 = (uint16_t)((g2 / maxval) * 255.0);
-  b2 = (uint16_t)((b2 / maxval) * 255.0);
-  c2 = (uint16_t)((c2 / maxval) * 255.0);
-
   Serial.print("b: ");
   Serial.print(b > 255 ? 255 : b);
 
@@ -170,19 +165,7 @@ void loop() {
 
   Serial.print(" g: ");
   Serial.print(g > 255 ? 255 : g);
-
-  // Serial.print(" bb: ");
-  // Serial.print(b2 > 255 ? 255 : b2);
-
-  // Serial.print(" rr: ");
-  // Serial.print(r2 > 255 ? 255 : r2);
-
-  // Serial.print(" gg: ");
-  // Serial.print(g2 > 255 ? 255 : g2);
-  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 7);
-  // Serial.print(" p: ");
-  // Serial.print(apds.readProximity());
-  // Serial.print(" clear: ");
-  // Serial.println(c);
   Serial.println();
+  
+  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 7);
 }
