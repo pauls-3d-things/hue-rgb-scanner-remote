@@ -15,6 +15,10 @@ const String apiKey = "xZXN4VEGU5qPJMzVGJy0uxPtHbkmPcyxpv5yvtgf";
 const char *wifiSSID = WIFI_SSID;
 const char *wifiPass = WIFI_PASS;
 
+#define NUM_LIGHTS 5
+uint8_t hueRgbLights[NUM_LIGHTS] = {6, 7, 8, 11, 12};
+uint8_t lightIndex = 0;
+
 void setLights(uint8_t left, uint8_t right) {
   analogWrite(D5, left);
   analogWrite(D6, right);
@@ -29,12 +33,21 @@ void setup() {
 
   if (!apds.begin()) {
     Serial.println("failed to initialize device! Please check your wiring.");
-  } else
+    while (true) {
+      // fast flash no sensor
+      setLights(100, 100);
+      delay(100);
+      setLights(0, 0);
+      delay(100);
+    }
+
+  } else {
     Serial.println("Device initialized!");
 
-  // enable color sensign mode
-  apds.enableColor(true);
-  apds.enableProximity(true);
+    apds.enableColor(true);
+    apds.enableProximity(true);
+    apds.enableGesture(true);
+  }
 
   uint8_t tries = 0;
   WiFi.mode(WIFI_STA);
@@ -43,9 +56,10 @@ void setup() {
       WiFi.begin(wifiSSID, wifiPass);
     }
 
-    delay(250);
+    // slow flash connecting wifi
+    delay(500);
     setLights(100, 0);
-    delay(250);
+    delay(500);
     setLights(0, 100);
     tries++;
   }
@@ -58,7 +72,7 @@ RGBConverter conv;
 void sendRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t light) {
   double hsl[3];
   conv.rgbToHsl((byte)r, (byte)g, (byte)b, hsl);
-  uint16_t hue = (uint16_t)(hsl[0] * 65535) ;
+  uint16_t hue = (uint16_t)(hsl[0] * 65535);
 
   if (client.connect(host, 80)) {
 
@@ -129,11 +143,34 @@ void getNormalizedColorData(uint16_t *r, uint16_t *g, uint16_t *b, uint16_t *c,
 }
 
 void loop() {
-  delay(500);
+
   if (apds.readProximity() < 20) {
+    // uint8_t g = apds.readGesture();
+    // switch (g) {
+    // case APDS9960_RIGHT:
+    // case APDS9960_DOWN:
+    // case APDS9960_UP:
+    // case APDS9960_LEFT:
+    //   lightIndex = (lightIndex + 1) % NUM_LIGHTS;
+    //   delay(50);
+    //   setLights(50, 0);
+    //   delay(50);
+    //   setLights(0, 0);
+    //   delay(50);
+    //   setLights(50, 0);
+    //   delay(50);
+    //   setLights(0, 0);
+    //   break;
+    // default:
+    //   //
+    //   Serial.println("gesture: " + g);
+    // }
+
+    delay(50);
     return;
   }
 
+  delay(500);
   uint16_t r, g, b, c;
   uint16_t r2, g2, b2, c2;
   // read bright samples
@@ -166,6 +203,11 @@ void loop() {
   Serial.print(" g: ");
   Serial.print(g > 255 ? 255 : g);
   Serial.println();
-  
+
+  delay(1500);
+  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 6);
   sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 7);
+  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 8);
+  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 11);
+  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 12);
 }
