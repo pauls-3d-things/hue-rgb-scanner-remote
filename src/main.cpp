@@ -1,23 +1,25 @@
 
 #include "Adafruit_APDS9960.h"
 #include "Arduino.h"
-#include "Config.h"
+#include "Config.h" // CREATE FROM Config.example.h
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include <RGBConverter.h>
 
 Adafruit_APDS9960 apds;
 WiFiClient client;
-const char *host = "192.168.178.38";
-const String apiKey = "xZXN4VEGU5qPJMzVGJy0uxPtHbkmPcyxpv5yvtgf";
-// cp config.h.example config.h
-// then edit the constants for config
+
+// IMPORTANT: create Config.h from Config.example.h FIRST
+// then modify the defines in the Config.h
+const char *host = API_HOST;
+const String apiKey = API_KEY;
 const char *wifiSSID = WIFI_SSID;
 const char *wifiPass = WIFI_PASS;
 
 #define NUM_LIGHTS 5
+// IMPORTANT: check how many lights you have and which IDs
+// they have by probing the API
 uint8_t hueRgbLights[NUM_LIGHTS] = {6, 7, 8, 11, 12};
-uint8_t lightIndex = 0;
 
 void setLights(uint8_t left, uint8_t right) {
   analogWrite(D5, left);
@@ -32,9 +34,9 @@ void setup() {
   Serial.begin(115200);
 
   if (!apds.begin()) {
-    Serial.println("failed to initialize device! Please check your wiring.");
+    Serial.println("APDS device not found");
     while (true) {
-      // fast flash no sensor
+      // LED behavior: fast flash = no sensor
       setLights(100, 100);
       delay(100);
       setLights(0, 0);
@@ -46,7 +48,6 @@ void setup() {
 
     apds.enableColor(true);
     apds.enableProximity(true);
-    apds.enableGesture(true);
   }
 
   uint8_t tries = 0;
@@ -56,7 +57,7 @@ void setup() {
       WiFi.begin(wifiSSID, wifiPass);
     }
 
-    // slow flash connecting wifi
+    // LED behavior: slow flash = connecting wifi
     delay(500);
     setLights(100, 0);
     delay(500);
@@ -112,6 +113,7 @@ void sendRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t light) {
   }
 }
 
+// this is some hacking I did to get some sensible values
 void getNormalizedColorData(uint16_t *r, uint16_t *g, uint16_t *b, uint16_t *c,
                             uint8_t lights, uint8_t samples) {
   uint16_t rt, gt, bt, ct;
@@ -145,27 +147,6 @@ void getNormalizedColorData(uint16_t *r, uint16_t *g, uint16_t *b, uint16_t *c,
 void loop() {
 
   if (apds.readProximity() < 20) {
-    // uint8_t g = apds.readGesture();
-    // switch (g) {
-    // case APDS9960_RIGHT:
-    // case APDS9960_DOWN:
-    // case APDS9960_UP:
-    // case APDS9960_LEFT:
-    //   lightIndex = (lightIndex + 1) % NUM_LIGHTS;
-    //   delay(50);
-    //   setLights(50, 0);
-    //   delay(50);
-    //   setLights(0, 0);
-    //   delay(50);
-    //   setLights(50, 0);
-    //   delay(50);
-    //   setLights(0, 0);
-    //   break;
-    // default:
-    //   //
-    //   Serial.println("gesture: " + g);
-    // }
-
     delay(50);
     return;
   }
@@ -205,9 +186,9 @@ void loop() {
   Serial.println();
 
   delay(1500);
-  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 6);
-  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 7);
-  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 8);
-  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 11);
-  sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, 12);
+
+  for (uint8t_t i; i < NUM_LIGHTS; i++) {
+      sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, hueRGBLights[i]);
+      delay(500);
+  }
 }

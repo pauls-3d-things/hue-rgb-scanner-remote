@@ -3,3 +3,4 @@
 .vscode/c_cpp_properties.json
 .vscode/
 src/Config.h
+.vscode/launch.json
