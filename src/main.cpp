@@ -19,7 +19,7 @@ const char *wifiPass = WIFI_PASS;
 #define NUM_LIGHTS 5
 // IMPORTANT: check how many lights you have and which IDs
 // they have by probing the API
-uint8_t hueRgbLights[NUM_LIGHTS] = {6, 7, 8, 11, 12};
+uint8_t hueRGBLights[NUM_LIGHTS] = {6, 7, 8, 11, 12};
 
 void setLights(uint8_t left, uint8_t right) {
   analogWrite(D5, left);
@@ -33,6 +33,8 @@ void setup() {
 
   Serial.begin(115200);
 
+  delay(2000);
+  
   if (!apds.begin()) {
     Serial.println("APDS device not found");
     while (true) {
@@ -81,10 +83,17 @@ void sendRGB(uint8_t r, uint8_t g, uint8_t b, uint8_t light) {
     String path = "PUT /api/" + apiKey + "/lights/" + String(light) + "/state";
     client.print(path);
     client.println(" HTTP/1.1");
-    client.println("Cache-Control: no-cache");
+
+    // this is required otherwise we get a "400 Bad Request"
+    client.print("Host: ");
+    client.println(host);
+
+    client.println("Accept: application/json");
     client.println("Content-Type: application/json");
+
     client.print("Content-Length: ");
     client.println(body.length());
+
     client.println();
     client.print(body);
 
@@ -187,8 +196,9 @@ void loop() {
 
   delay(1500);
 
-  for (uint8t_t i; i < NUM_LIGHTS; i++) {
-      sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b, hueRGBLights[i]);
-      delay(500);
+  for (uint8_t i = 0; i < NUM_LIGHTS; i++) {
+    sendRGB(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b,
+            hueRGBLights[i]);
+    delay(500);
   }
 }
